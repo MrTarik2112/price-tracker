@@ -1,4 +1,4 @@
-name: Price Tracker
+name: Price Tracker Cloud
 
 on:
   schedule:
@@ -9,11 +9,11 @@ permissions:
   contents: write
 
 jobs:
-  run:
+  tracker:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup Python
@@ -21,7 +21,7 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install deps
+      - name: Install dependencies
         run: pip install requests
 
       - name: Run bot
@@ -31,6 +31,6 @@ jobs:
         run: |
           git config user.name "price-bot"
           git config user.email "bot@github.com"
-          git add price.json
-          git commit -m "price update" || echo "no changes"
-          git push
+          git add acik.json kapali.json || true
+          git commit -m "price update $(date)" || echo "no changes"
+          git push || echo "no changes"

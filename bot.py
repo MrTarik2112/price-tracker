@@ -3,7 +3,15 @@ import json
 import re
 from datetime import datetime
 
-URL = "https://www.domirobot.com/anycubic-kobra-3-v2-combo-3d-yazici-pmu7732"
+URLS = {
+    "acik": "https://www.domirobot.com/anycubic-kobra-3-v2-combo-3d-yazici-pmu7732",
+    "kapali": "https://www.domirobot.com/anycubic-kobra-s1-combo-3d-yazici-pmu7374"
+}
+
+FILES = {
+    "acik": "acik.json",
+    "kapali": "kapali.json"
+}
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) Chrome/120",
@@ -12,12 +20,12 @@ HEADERS = {
 
 # =========================
 def now():
-    return datetime.now().isoformat()
+    return datetime.now().strftime("%Y-%m-%d -- %H:%M:%S")
 
 # =========================
-def fetch():
+def fetch(url):
     try:
-        r = requests.get(URL, headers=HEADERS, timeout=15)
+        r = requests.get(url, headers=HEADERS, timeout=12)
         return r.text if r.status_code == 200 else None
     except:
         return None
@@ -27,123 +35,119 @@ def parse_price(html):
     if not html:
         return None
 
+    # JSON-LD
     m = re.search(r'"price"\s*:\s*"([0-9.]+)"', html)
     if m:
         return float(m.group(1))
 
+    # data-price
     m = re.search(r'data-price="([0-9.,]+)"', html)
     if m:
         return float(m.group(1).replace(",", "."))
 
+    # fallback
+    m = re.search(r"(\d{4,6})", html)
+    if m:
+        return float(m.group(1))
+
     return None
 
 # =========================
-def load_db():
+def is_out_of_stock(html):
+    if not html:
+        return True
+
+    keywords = [
+        "stokta yok",
+        "tükendi",
+        "out of stock",
+        "sold out"
+    ]
+
+    return any(k.lower() in html.lower() for k in keywords)
+
+# =========================
+def load(file):
     try:
-        data = json.load(open("price.json"))
+        data = json.load(open(file))
         return data if isinstance(data, list) else []
     except:
         return []
 
 # =========================
-def save_db(db):
-    with open("price.json", "w") as f:
-        json.dump(db, f, indent=2)
+def save(file, data):
+    with open(file, "w") as f:
+        json.dump(data, f, indent=2)
 
 # =========================
 def duration(start, end):
     try:
-        t1 = datetime.fromisoformat(start)
-        t2 = datetime.fromisoformat(end)
+        t1 = datetime.strptime(start, "%Y-%m-%d -- %H:%M:%S")
+        t2 = datetime.strptime(end, "%Y-%m-%d -- %H:%M:%S")
         d = t2 - t1
 
-        h = d.seconds // 3600
-        m = (d.seconds % 3600) // 60
-
-        return f"{d.days}d {h}h {m}m"
+        return f"{d.days}g {d.seconds//3600}s {(d.seconds%3600)//60}dk"
     except:
         return "?"
 
 # =========================
-def stats(db):
-    prices = [x["price"] for x in db]
-    return {
-        "min": min(prices) if prices else 0,
-        "max": max(prices) if prices else 0,
-        "count": len(db)
-    }
+def process(name, url, file):
+    print(f"\n================ {name.upper()} =================")
 
-# =========================
-def trend(db):
-    if len(db) < 2:
-        return "stable"
+    html = fetch(url)
 
-    first = db[0]["price"]
-    last = db[-1]["price"]
+    if is_out_of_stock(html):
+        print("⚠️ STOKTA YOK")
+        return
 
-    if last > first:
-        return "📈 yükseliyor"
-    elif last < first:
-        return "📉 düşüyor"
-    return "➡ stabil"
-
-# =========================
-def main():
-    print("\n🚀 ULTRA PRICE ENGINE STARTED\n")
-
-    html = fetch()
     price = parse_price(html)
-    db = load_db()
+    db = load(file)
 
     if not price:
         print("❌ fiyat okunamadı")
         return
 
-    print("💰 Güncel:", price, "TL")
+    print("💰 fiyat:", price)
 
-    # first run
     if not db:
         db.append({
             "price": price,
             "start": now(),
             "end": now()
         })
-        save_db(db)
+        save(file, db)
         print("📌 ilk kayıt")
         return
 
     last = db[-1]
 
-    # same price
     if price == last["price"]:
         print("⏸ değişim yok")
-        print("📊 Trend:", trend(db))
         return
 
-    # close previous period
+    # close old
     last["end"] = now()
 
-    print("\n🔥 FİYAT DEĞİŞTİ!")
-    print(f"📦 eski: {last['price']} TL")
-    print(f"⏳ süre: {duration(last['start'], last['end'])}")
+    print("🔥 FİYAT DEĞİŞTİ")
+    print("📦 eski:", last["price"])
+    print("⏳ süre:", duration(last["start"], last["end"]))
 
-    # new entry
     db.append({
         "price": price,
         "start": now(),
         "end": now()
     })
 
-    save_db(db)
+    save(file, db)
 
-    # analytics
-    s = stats(db)
+# =========================
+def main():
+    print("\n🚀 DUAL PRICE TRACKER STARTED\n")
 
-    print("\n📊 ANALİZ")
-    print(f"🔻 min: {s['min']} TL")
-    print(f"🔺 max: {s['max']} TL")
-    print(f"🔁 değişim sayısı: {s['count']}")
-    print(f"📈 trend: {trend(db)}")
+    process("ACIK KASA", URLS["acik"], FILES["acik"])
+    process("KAPALI KASA", URLS["kapali"], FILES["kapali"])
+
+    print("\n✔ DONE")
 
 # =========================
 if __name__ == "__main__":

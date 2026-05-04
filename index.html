@@ -1,32 +1,32 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Price Tracker</title>
-
+  <meta charset="UTF-8">
+  <title>Price Tracker Dashboard</title>
   <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
 
-  <header>
-    <h1>📊 Price Tracker</h1>
-    <p>Canlı fiyat takip sistemi</p>
-  </header>
+  <div class="container">
 
-  <div class="grid">
+    <h1>💎 Price Tracker</h1>
 
-    <div class="card" id="acik"></div>
-    <div class="card" id="kapali"></div>
+    <div class="grid">
+
+      <div class="card">
+        <h2>🟢 Açık Kasa</h2>
+        <div id="acik"></div>
+      </div>
+
+      <div class="card">
+        <h2>🔵 Kapalı Kasa</h2>
+        <div id="kapali"></div>
+      </div>
+
+    </div>
 
   </div>
 
-  <footer>
-    <p>⚡ Live data • GitHub Pages</p>
-  </footer>
-
   <script src="app.js"></script>
-
 </body>
 </html>

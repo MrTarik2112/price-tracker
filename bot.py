@@ -17,7 +17,7 @@ URLS = {
 }
 
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) Chrome/120",
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64)",
     "Accept-Language": "tr-TR,tr;q=0.9"
 }
 
@@ -46,10 +46,6 @@ def parse_price(html):
     if m:
         return float(m.group(1).replace(",", "."))
 
-    m = re.search(r"(\d{4,6})", html)
-    if m:
-        return float(m.group(1))
-
     return None
 
 # =========================
@@ -57,8 +53,8 @@ def stock_check(html):
     if not html:
         return "unknown"
 
-    text = html.lower()
-    if "stokta yok" in text or "tükendi" in text or "out of stock" in text:
+    t = html.lower()
+    if "stokta yok" in t or "tükendi" in t:
         return "out_of_stock"
 
     return "in_stock"
@@ -68,9 +64,8 @@ def load(file):
     try:
         data = json.load(open(file))
 
-        # 🔥 FIX: eski format (list) ise return etme → migrate yap
         if isinstance(data, list):
-            return {"_legacy": data}
+            return migrate_legacy(data)
 
         return data
     except:
@@ -82,27 +77,16 @@ def save(file, data):
         json.dump(data, f, indent=2)
 
 # =========================
-def migrate(old_list, name, url):
-    prices = [x.get("price", 0) for x in old_list]
+def migrate_legacy(old):
+    prices = [x.get("price", 0) for x in old]
 
     return {
-        "product": {
-            "name": name,
-            "url": url,
-            "last_update": old_list[-1]["end"] if old_list else now()
-        },
+        "product": {},
         "current": {
             "price": prices[-1] if prices else 0,
             "status": "unknown"
         },
-        "stats": {
-            "min_price": min(prices) if prices else 0,
-            "max_price": max(prices) if prices else 0,
-            "total_changes": len(old_list),
-            "trend": "stable",
-            "avg_hold_time": "0"
-        },
-        "history": old_list
+        "history": old
     }
 
 # =========================
@@ -111,47 +95,48 @@ def new_db(name, url, price, status):
         "product": {
             "name": name,
             "url": url,
-            "last_update": now()
+            "first_seen": now(),
+            "last_seen": now()
         },
         "current": {
             "price": price,
             "status": status
         },
-        "stats": {
-            "min_price": price,
-            "max_price": price,
-            "total_changes": 0,
-            "trend": "stable",
-            "avg_hold_time": "0"
-        },
         "history": []
     }
 
 # =========================
-def duration(start, end):
-    try:
-        t1 = datetime.strptime(start, "%Y-%m-%d -- %H:%M:%S")
-        t2 = datetime.strptime(end, "%Y-%m-%d -- %H:%M:%S")
-        d = t2 - t1
-        return f"{d.days}g {d.seconds//3600}s {(d.seconds%3600)//60}dk"
-    except:
-        return "?"
+def add_snapshot(db, price, status):
+    last_price = db["current"]["price"]
+
+    snapshot = {
+        "time": now(),
+        "price": price,
+        "status": status,
+        "changed": price != last_price
+    }
+
+    db["history"].append(snapshot)
+
+    # keep only last 500 logs (performance)
+    db["history"] = db["history"][-500:]
+
+    return last_price
 
 # =========================
-def update_stats(db):
-    prices = [h["price"] for h in db["history"]] + [db["current"]["price"]]
+def trend(db):
+    h = db["history"]
+    if len(h) < 2:
+        return "stable"
 
-    db["stats"]["min_price"] = min(prices)
-    db["stats"]["max_price"] = max(prices)
-    db["stats"]["total_changes"] = len(db["history"])
+    first = h[0]["price"]
+    last = h[-1]["price"]
 
-    if len(prices) > 1:
-        if prices[-1] > prices[0]:
-            db["stats"]["trend"] = "up"
-        elif prices[-1] < prices[0]:
-            db["stats"]["trend"] = "down"
-        else:
-            db["stats"]["trend"] = "stable"
+    if last > first:
+        return "up"
+    if last < first:
+        return "down"
+    return "stable"
 
 # =========================
 def process(key, info):
@@ -167,45 +152,31 @@ def process(key, info):
 
     db = load(info["file"])
 
-    # 🔥 MIGRATION FIX
-    if db is None:
+    if not db:
         db = new_db(info["name"], info["url"], price, status)
 
-    elif "_legacy" in db:
-        db = migrate(db["_legacy"], info["name"], info["url"])
+    last_price = add_snapshot(db, price, status)
 
-    last_price = db["current"]["price"]
-
-    if price == last_price:
-        print("⏸ değişim yok")
-        db["product"]["last_update"] = now()
-        db["current"]["status"] = status
-        save(info["file"], db)
-        return
-
-    print("🔥 FİYAT DEĞİŞTİ")
-    print(f"📦 eski: {last_price}")
-    print(f"💰 yeni: {price}")
-
-    db["history"].append({
-        "price": last_price,
-        "start": db["product"]["last_update"],
-        "end": now(),
-        "duration": duration(db["product"]["last_update"], now())
-    })
-
+    # update current always
     db["current"]["price"] = price
     db["current"]["status"] = status
-    db["product"]["last_update"] = now()
+    db["product"]["last_seen"] = now()
 
-    update_stats(db)
+    print("💰 fiyat:", price)
+    print("📦 status:", status)
+
+    if price != last_price:
+        print("🔥 CHANGE DETECTED")
+    else:
+        print("⏸ no change")
+
+    print("📊 trend:", trend(db))
+
     save(info["file"], db)
-
-    print("📊 stats güncellendi")
 
 # =========================
 def main():
-    print("\n🚀 ULTRA JSON ENGINE (CRASH SAFE) STARTED\n")
+    print("\n🚀 PRO PRICE TRACKER STARTED\n")
 
     for k, v in URLS.items():
         process(k, v)

@@ -34,10 +34,7 @@ async function getJSON(file) {
 function render(data, elementId) {
   const el = document.getElementById(elementId);
 
-  if (!el) {
-    console.error("❌ DIV YOK:", elementId);
-    return;
-  }
+  if (!el) return;
 
   if (!data || !data.current) {
     el.innerHTML = "❌ veri yok / json hatalı";
@@ -63,6 +60,23 @@ function render(data, elementId) {
       🔻 Min: ${s.min_price ?? "-"} TL<br>
       🔺 Max: ${s.max_price ?? "-"} TL<br>
       🔁 Değişim: ${s.total_changes ?? 0}
+    </div>
+
+    <!-- 💥 LINK EKLENDİ -->
+    <div style="margin-top:12px">
+      <a href="${p.url ?? "#"}"
+         target="_blank"
+         style="
+           display:inline-block;
+           padding:8px 12px;
+           background:#00ff9d;
+           color:#000;
+           font-weight:bold;
+           border-radius:8px;
+           text-decoration:none;
+         ">
+        🔗 Ürüne Git
+      </a>
     </div>
 
     <div style="margin-top:10px;opacity:0.6">

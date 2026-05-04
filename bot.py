@@ -1,124 +1,149 @@
 import requests
 import json
 import re
-import time
 from datetime import datetime
 
 URL = "https://www.domirobot.com/anycubic-kobra-3-v2-combo-3d-yazici-pmu7732"
 
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
-    "Accept-Language": "tr-TR,tr;q=0.9,en;q=0.8",
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) Chrome/120",
+    "Accept-Language": "tr-TR,tr;q=0.9"
 }
 
 # =========================
-# UTIL: FORMAT PRICE
+def now():
+    return datetime.now().isoformat()
+
 # =========================
-def format_price(p):
+def fetch():
     try:
-        p = float(p)
-        return f"{p:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        r = requests.get(URL, headers=HEADERS, timeout=15)
+        return r.text if r.status_code == 200 else None
     except:
-        return str(p)
+        return None
 
 # =========================
-# FETCH WITH RETRY
-# =========================
-def fetch_html(retries=3):
-    for i in range(retries):
-        try:
-            r = requests.get(URL, headers=HEADERS, timeout=15)
-            if r.status_code == 200:
-                return r.text
-        except:
-            time.sleep(2)
-    return None
-
-# =========================
-# PARSE PRICE (SMART)
-# =========================
-def extract_price(html):
+def parse_price(html):
     if not html:
         return None
 
-    # 1) JSON-LD (EN GÜVENLİ)
-    match = re.search(r'"price"\s*:\s*"([0-9.]+)"', html)
-    if match:
-        return float(match.group(1))
+    m = re.search(r'"price"\s*:\s*"([0-9.]+)"', html)
+    if m:
+        return float(m.group(1))
 
-    # 2) fallback: meta / data-layer
-    match = re.search(r'data-price="([0-9.,]+)"', html)
-    if match:
-        return float(match.group(1).replace(",", "."))
-
-    # 3) brute fallback
-    match = re.search(r"(\d{4,6})", html)
-    if match:
-        return float(match.group(1))
+    m = re.search(r'data-price="([0-9.,]+)"', html)
+    if m:
+        return float(m.group(1).replace(",", "."))
 
     return None
 
 # =========================
-# FILE STORAGE
-# =========================
-def load_last():
+def load_db():
     try:
-        return json.load(open("price.json"))["price"]
+        data = json.load(open("price.json"))
+        return data if isinstance(data, list) else []
     except:
-        return None
-
-def save(price):
-    json.dump({
-        "price": price,
-        "time": datetime.now().isoformat()
-    }, open("price.json", "w"), indent=2)
+        return []
 
 # =========================
-# CHANGE ANALYSIS
+def save_db(db):
+    with open("price.json", "w") as f:
+        json.dump(db, f, indent=2)
+
 # =========================
-def analyze_change(old, new):
-    if not old:
-        return None
+def duration(start, end):
+    try:
+        t1 = datetime.fromisoformat(start)
+        t2 = datetime.fromisoformat(end)
+        d = t2 - t1
 
-    diff = new - old
-    percent = (diff / old) * 100
+        h = d.seconds // 3600
+        m = (d.seconds % 3600) // 60
 
+        return f"{d.days}d {h}h {m}m"
+    except:
+        return "?"
+
+# =========================
+def stats(db):
+    prices = [x["price"] for x in db]
     return {
-        "diff": diff,
-        "percent": percent
+        "min": min(prices) if prices else 0,
+        "max": max(prices) if prices else 0,
+        "count": len(db)
     }
 
 # =========================
-# MAIN ENGINE
+def trend(db):
+    if len(db) < 2:
+        return "stable"
+
+    first = db[0]["price"]
+    last = db[-1]["price"]
+
+    if last > first:
+        return "📈 yükseliyor"
+    elif last < first:
+        return "📉 düşüyor"
+    return "➡ stabil"
+
 # =========================
 def main():
-    print("\n🚀 PRICE TRACKER ENGINE STARTED\n")
+    print("\n🚀 ULTRA PRICE ENGINE STARTED\n")
 
-    html = fetch_html()
-    price = extract_price(html)
-    old = load_last()
+    html = fetch()
+    price = parse_price(html)
+    db = load_db()
 
-    if price:
-        print("💰 Güncel Fiyat:", format_price(price), "TL")
+    if not price:
+        print("❌ fiyat okunamadı")
+        return
 
-        if old:
-            print("📦 Eski Fiyat:", format_price(old), "TL")
+    print("💰 Güncel:", price, "TL")
 
-            change = analyze_change(old, price)
-            if change:
-                sign = "📈" if change["diff"] > 0 else "📉"
-                print(f"{sign} Değişim: {change['diff']:.2f} TL ({change['percent']:.2f}%)")
+    # first run
+    if not db:
+        db.append({
+            "price": price,
+            "start": now(),
+            "end": now()
+        })
+        save_db(db)
+        print("📌 ilk kayıt")
+        return
 
-                # büyük değişim alert
-                if abs(change["percent"]) > 5:
-                    print("🔥 ÖNEMLİ FİYAT DEĞİŞİMİ!")
+    last = db[-1]
 
-        save(price)
+    # same price
+    if price == last["price"]:
+        print("⏸ değişim yok")
+        print("📊 Trend:", trend(db))
+        return
 
-    else:
-        print("❌ Fiyat çekilemedi (site yapısı değişmiş olabilir)")
+    # close previous period
+    last["end"] = now()
 
-    print("\n✔ Done at:", datetime.now().isoformat())
+    print("\n🔥 FİYAT DEĞİŞTİ!")
+    print(f"📦 eski: {last['price']} TL")
+    print(f"⏳ süre: {duration(last['start'], last['end'])}")
+
+    # new entry
+    db.append({
+        "price": price,
+        "start": now(),
+        "end": now()
+    })
+
+    save_db(db)
+
+    # analytics
+    s = stats(db)
+
+    print("\n📊 ANALİZ")
+    print(f"🔻 min: {s['min']} TL")
+    print(f"🔺 max: {s['max']} TL")
+    print(f"🔁 değişim sayısı: {s['count']}")
+    print(f"📈 trend: {trend(db)}")
 
 # =========================
 if __name__ == "__main__":

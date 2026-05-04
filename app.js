@@ -1,31 +1,68 @@
-async function loadData(file, elementId) {
+const CONFIG = {
+  acik: "acik.json",
+  kapali: "kapali.json",
+  refreshMs: 10000
+};
+
+// =========================
+async function fetchJSON(file) {
   try {
-    const res = await fetch(file + "?t=" + new Date().getTime());
-    const data = await res.json();
-
-    const el = document.getElementById(elementId);
-
-    const current = data.current.price;
-    const status = data.current.status;
-
-    el.innerHTML = `
-      <div class="price">${current} TL</div>
-      <div class="small">Durum: ${status}</div>
-      <div class="small">Trend: ${data.stats.trend}</div>
-      <div class="small">Min: ${data.stats.min_price} TL</div>
-      <div class="small">Max: ${data.stats.max_price} TL</div>
-      <div class="small">Değişim: ${data.stats.total_changes}</div>
-      <div class="small">Son: ${data.product.last_update}</div>
-    `;
-  } catch (e) {
-    document.getElementById(elementId).innerHTML = "❌ veri yok";
+    const res = await fetch(file + "?t=" + Date.now()); // cache breaker
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    return await res.json();
+  } catch (err) {
+    console.log("Fetch error:", file, err);
+    return null;
   }
 }
 
-function refresh() {
-  loadData("acik", "acik");
-  loadData("kapali", "kapali");
+// =========================
+function formatTime(t) {
+  if (!t) return "-";
+  return t;
 }
 
-refresh();
-setInterval(refresh, 15000); // 15 saniye refresh
+// =========================
+function renderCard(data, el) {
+  if (!data || !data.current) {
+    el.innerHTML = `
+      <div class="error">❌ Veri yok / JSON hatalı</div>
+    `;
+    return;
+  }
+
+  const c = data.current;
+  const s = data.stats || {};
+  const p = data.product || {};
+
+  el.innerHTML = `
+    <div class="price">${c.price ?? "-"} TL</div>
+
+    <div class="info">
+      <div>📦 Durum: ${c.status ?? "-"}</div>
+      <div>📈 Trend: ${s.trend ?? "-"}</div>
+      <div>🔻 Min: ${s.min_price ?? "-"}</div>
+      <div>🔺 Max: ${s.max_price ?? "-"}</div>
+      <div>🔁 Değişim: ${s.total_changes ?? 0}</div>
+      <div>🕒 Son: ${formatTime(p.last_update)}</div>
+    </div>
+  `;
+}
+
+// =========================
+async function loadAll() {
+  const acikData = await fetchJSON(CONFIG.acik);
+  const kapaliData = await fetchJSON(CONFIG.kapali);
+
+  renderCard(acikData, document.getElementById("acik"));
+  renderCard(kapaliData, document.getElementById("kapali"));
+}
+
+// =========================
+function start() {
+  loadAll();
+  setInterval(loadAll, CONFIG.refreshMs);
+}
+
+// =========================
+start();

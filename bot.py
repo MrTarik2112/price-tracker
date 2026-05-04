@@ -57,7 +57,8 @@ def stock_check(html):
     if not html:
         return "unknown"
 
-    if "stokta yok" in html.lower() or "tükendi" in html.lower():
+    text = html.lower()
+    if "stokta yok" in text or "tükendi" in text or "out of stock" in text:
         return "out_of_stock"
 
     return "in_stock"
@@ -65,7 +66,13 @@ def stock_check(html):
 # =========================
 def load(file):
     try:
-        return json.load(open(file))
+        data = json.load(open(file))
+
+        # 🔥 FIX: eski format (list) ise return etme → migrate yap
+        if isinstance(data, list):
+            return {"_legacy": data}
+
+        return data
     except:
         return None
 
@@ -73,6 +80,30 @@ def load(file):
 def save(file, data):
     with open(file, "w") as f:
         json.dump(data, f, indent=2)
+
+# =========================
+def migrate(old_list, name, url):
+    prices = [x.get("price", 0) for x in old_list]
+
+    return {
+        "product": {
+            "name": name,
+            "url": url,
+            "last_update": old_list[-1]["end"] if old_list else now()
+        },
+        "current": {
+            "price": prices[-1] if prices else 0,
+            "status": "unknown"
+        },
+        "stats": {
+            "min_price": min(prices) if prices else 0,
+            "max_price": max(prices) if prices else 0,
+            "total_changes": len(old_list),
+            "trend": "stable",
+            "avg_hold_time": "0"
+        },
+        "history": old_list
+    }
 
 # =========================
 def new_db(name, url, price, status):
@@ -136,16 +167,15 @@ def process(key, info):
 
     db = load(info["file"])
 
-    # first run
-    if not db:
+    # 🔥 MIGRATION FIX
+    if db is None:
         db = new_db(info["name"], info["url"], price, status)
-        save(info["file"], db)
-        print("📌 ilk kayıt oluşturuldu")
-        return
+
+    elif "_legacy" in db:
+        db = migrate(db["_legacy"], info["name"], info["url"])
 
     last_price = db["current"]["price"]
 
-    # same price
     if price == last_price:
         print("⏸ değişim yok")
         db["product"]["last_update"] = now()
@@ -153,7 +183,6 @@ def process(key, info):
         save(info["file"], db)
         return
 
-    # PRICE CHANGE
     print("🔥 FİYAT DEĞİŞTİ")
     print(f"📦 eski: {last_price}")
     print(f"💰 yeni: {price}")
@@ -170,14 +199,13 @@ def process(key, info):
     db["product"]["last_update"] = now()
 
     update_stats(db)
-
     save(info["file"], db)
 
     print("📊 stats güncellendi")
 
 # =========================
 def main():
-    print("\n🚀 ULTRA JSON ENGINE STARTED\n")
+    print("\n🚀 ULTRA JSON ENGINE (CRASH SAFE) STARTED\n")
 
     for k, v in URLS.items():
         process(k, v)

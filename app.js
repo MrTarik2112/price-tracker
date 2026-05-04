@@ -6,11 +6,10 @@ const FILES = {
 const REFRESH_MS = 10000;
 
 // =========================
-// SAFE FETCH (GITHUB PAGES FIXED)
+// SAFE FETCH
 // =========================
 async function getJSON(file) {
   try {
-    // 🔥 KRİTİK FIX: always .json + relative safe path
     const path = `./${file}.json?v=${Date.now()}`;
 
     const res = await fetch(path);
@@ -29,12 +28,15 @@ async function getJSON(file) {
 }
 
 // =========================
-// RENDER SAFE UI
+// RENDER CARD (WITH LINK)
 // =========================
 function render(data, elementId) {
   const el = document.getElementById(elementId);
 
-  if (!el) return;
+  if (!el) {
+    console.error("❌ DIV YOK:", elementId);
+    return;
+  }
 
   if (!data || !data.current) {
     el.innerHTML = "❌ veri yok / json hatalı";
@@ -62,19 +64,20 @@ function render(data, elementId) {
       🔁 Değişim: ${s.total_changes ?? 0}
     </div>
 
-    <!-- 💥 LINK EKLENDİ -->
     <div style="margin-top:12px">
-      <a href="${p.url ?? "#"}"
-         target="_blank"
+      <a href="${p.url ?? "#"}" target="_blank"
          style="
            display:inline-block;
-           padding:8px 12px;
+           padding:10px 14px;
            background:#00ff9d;
            color:#000;
-           font-weight:bold;
-           border-radius:8px;
            text-decoration:none;
-         ">
+           border-radius:10px;
+           font-weight:700;
+           transition:0.2s;
+         "
+         onmouseover="this.style.transform='scale(1.05)'"
+         onmouseout="this.style.transform='scale(1)'">
         🔗 Ürüne Git
       </a>
     </div>
@@ -97,10 +100,10 @@ async function loadAll() {
 }
 
 // =========================
-// INIT SYSTEM
+// INIT
 // =========================
 function start() {
-  console.log("🚀 PRICE DASHBOARD STARTED");
+  console.log("🚀 PRICE TRACKER DASHBOARD STARTED");
 
   loadAll();
   setInterval(loadAll, REFRESH_MS);

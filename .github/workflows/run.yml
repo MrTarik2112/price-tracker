@@ -1,0 +1,33 @@
+name: Price Tracker
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"   # 10 dakikada bir
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run bot
+        run: python bot.py
+
+      - name: Save price file
+        run: |
+          git config user.name "price-bot"
+          git config user.email "bot@github.com"
+          git add price.json
+          git commit -m "update price" || echo "no changes"
+          git push

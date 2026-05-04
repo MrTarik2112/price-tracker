@@ -1,6 +1,6 @@
 const FILES = {
-  acik: "acik.json",
-  kapali: "kapali.json"
+  acik: "acik",
+  kapali: "kapali"
 };
 
 const REFRESH_MS = 10000;
@@ -10,29 +10,26 @@ const REFRESH_MS = 10000;
 // =========================
 async function getJSON(file) {
   try {
-    // 🔥 FIX: relative root + cache breaker
-    const path = "./" + file + "?v=" + Date.now();
+    // 🔥 KRİTİK FIX: always .json + relative safe path
+    const path = `./${file}.json?v=${Date.now()}`;
 
     const res = await fetch(path);
 
     if (!res.ok) {
-      console.log("HTTP ERROR:", file, res.status);
+      console.log("❌ HTTP ERROR:", path, res.status);
       return null;
     }
 
-    const data = await res.json();
-
-    console.log("LOADED:", file, data);
-    return data;
+    return await res.json();
 
   } catch (err) {
-    console.log("FETCH ERROR:", file, err);
+    console.log("❌ FETCH ERROR:", file, err);
     return null;
   }
 }
 
 // =========================
-// RENDER CARD
+// RENDER SAFE UI
 // =========================
 function render(data, elementId) {
   const el = document.getElementById(elementId);
@@ -52,19 +49,19 @@ function render(data, elementId) {
   const p = data.product || {};
 
   el.innerHTML = `
-    <div style="font-size:28px;font-weight:bold;color:#00ff9d">
+    <div style="font-size:30px;font-weight:700;color:#00ff9d">
       ${c.price ?? "-"} TL
     </div>
 
-    <div style="margin-top:10px">
+    <div style="margin-top:8px">
       📦 ${p.name ?? "-"}<br>
       📊 Durum: ${c.status ?? "-"}<br>
-      📈 Trend: ${s.trend ?? "-"}<br>
+      📈 Trend: ${s.trend ?? "-"}
     </div>
 
     <div style="margin-top:10px">
-      🔻 Min: ${s.min_price ?? "-"}<br>
-      🔺 Max: ${s.max_price ?? "-"}<br>
+      🔻 Min: ${s.min_price ?? "-"} TL<br>
+      🔺 Max: ${s.max_price ?? "-"} TL<br>
       🔁 Değişim: ${s.total_changes ?? 0}
     </div>
 
@@ -75,7 +72,7 @@ function render(data, elementId) {
 }
 
 // =========================
-// LOAD ALL
+// LOAD ALL DATA
 // =========================
 async function loadAll() {
   const acik = await getJSON(FILES.acik);
@@ -86,10 +83,10 @@ async function loadAll() {
 }
 
 // =========================
-// INIT
+// INIT SYSTEM
 // =========================
 function start() {
-  console.log("🚀 DASHBOARD START");
+  console.log("🚀 PRICE DASHBOARD STARTED");
 
   loadAll();
   setInterval(loadAll, REFRESH_MS);

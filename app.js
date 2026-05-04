@@ -3,34 +3,44 @@ const FILES = {
   kapali: "kapali"
 };
 
-const REFRESH = 10000;
+const REFRESH_MS = 10000;
 
+// =========================
+// SAFE FETCH (GITHUB PAGES FIXED)
 // =========================
 async function getJSON(file) {
   try {
-    const res = await fetch(`./${file}.json?v=${Date.now()}`);
-    if (!res.ok) return null;
+    // 🔥 KRİTİK FIX: always .json + relative safe path
+    const path = `./${file}.json?v=${Date.now()}`;
+
+    const res = await fetch(path);
+
+    if (!res.ok) {
+      console.log("❌ HTTP ERROR:", path, res.status);
+      return null;
+    }
+
     return await res.json();
-  } catch {
+
+  } catch (err) {
+    console.log("❌ FETCH ERROR:", file, err);
     return null;
   }
 }
 
 // =========================
-function getBadge(trend){
-  if(trend === "up") return `<span class="badge up">📈 Artıyor</span>`;
-  if(trend === "down") return `<span class="badge down">📉 Düşüyor</span>`;
-  return `<span class="badge stable">➡ Stabil</span>`;
-}
-
+// RENDER SAFE UI
 // =========================
-function render(data, id){
+function render(data, elementId) {
+  const el = document.getElementById(elementId);
 
-  const el = document.getElementById(id);
-  if(!el) return;
+  if (!el) {
+    console.error("❌ DIV YOK:", elementId);
+    return;
+  }
 
-  if(!data){
-    el.innerHTML = "❌ veri yok";
+  if (!data || !data.current) {
+    el.innerHTML = "❌ veri yok / json hatalı";
     return;
   }
 
@@ -39,29 +49,48 @@ function render(data, id){
   const p = data.product || {};
 
   el.innerHTML = `
-    <div class="price">${c.price} TL</div>
+    <div style="font-size:30px;font-weight:700;color:#00ff9d">
+      ${c.price ?? "-"} TL
+    </div>
 
-    ${getBadge(s.trend)}
+    <div style="margin-top:8px">
+      📦 ${p.name ?? "-"}<br>
+      📊 Durum: ${c.status ?? "-"}<br>
+      📈 Trend: ${s.trend ?? "-"}
+    </div>
 
-    <div class="meta">
-      📦 ${p.name}<br>
-      📊 ${c.status}<br><br>
+    <div style="margin-top:10px">
+      🔻 Min: ${s.min_price ?? "-"} TL<br>
+      🔺 Max: ${s.max_price ?? "-"} TL<br>
+      🔁 Değişim: ${s.total_changes ?? 0}
+    </div>
 
-      🔻 Min: ${s.min_price} TL<br>
-      🔺 Max: ${s.max_price} TL<br>
-      🔁 Değişim: ${s.total_changes}<br><br>
-
-      🕒 Son: ${p.last_update}
+    <div style="margin-top:10px;opacity:0.6">
+      🕒 Son: ${p.last_update ?? "-"}
     </div>
   `;
 }
 
 // =========================
-async function load(){
-  render(await getJSON(FILES.acik), "acik");
-  render(await getJSON(FILES.kapali), "kapali");
+// LOAD ALL DATA
+// =========================
+async function loadAll() {
+  const acik = await getJSON(FILES.acik);
+  const kapali = await getJSON(FILES.kapali);
+
+  render(acik, "acik");
+  render(kapali, "kapali");
 }
 
 // =========================
-load();
-setInterval(load, REFRESH);
+// INIT SYSTEM
+// =========================
+function start() {
+  console.log("🚀 PRICE DASHBOARD STARTED");
+
+  loadAll();
+  setInterval(loadAll, REFRESH_MS);
+}
+
+// =========================
+start();

@@ -1,84 +1,32 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>Price Tracker Dashboard</title>
-
-<style>
-body{
-  margin:0;
-  font-family: Arial;
-  background:#0f1115;
-  color:white;
-}
-
-.header{
-  padding:20px;
-  text-align:center;
-  font-size:22px;
-  font-weight:bold;
-  color:#00ff9d;
-}
-
-.container{
-  display:flex;
-  gap:20px;
-  justify-content:center;
-  flex-wrap:wrap;
-  padding:20px;
-}
-
-.card{
-  background:#171a21;
-  padding:20px;
-  border-radius:15px;
-  width:300px;
-  box-shadow:0 0 20px rgba(0,255,157,0.1);
-  transition:0.3s;
-}
-
-.card:hover{
-  transform:scale(1.03);
-}
-
-.price{
-  font-size:28px;
-  font-weight:bold;
-  color:#00ff9d;
-}
-
-.badge{
-  display:inline-block;
-  padding:5px 10px;
-  border-radius:8px;
-  margin-top:10px;
-  font-size:12px;
-}
-
-.up{ background:#1f6f3f; }
-.down{ background:#7a1f1f; }
-.stable{ background:#444; }
-
-.meta{
-  margin-top:10px;
-  font-size:13px;
-  opacity:0.8;
-}
-</style>
+  <meta charset="UTF-8">
+  <title>Price Tracker Dashboard</title>
+  <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
 
-<div class="header">🚀 LIVE PRICE TRACKER DASHBOARD</div>
+  <div class="container">
 
-<div class="container">
-  <div class="card" id="acik"></div>
-  <div class="card" id="kapali"></div>
-</div>
+    <h1>💎 Price Tracker</h1>
 
-<script src="app.js"></script>
+    <div class="grid">
 
+      <div class="card">
+        <h2>🟢 Açık Kasa</h2>
+        <div id="acik"></div>
+      </div>
+
+      <div class="card">
+        <h2>🔵 Kapalı Kasa</h2>
+        <div id="kapali"></div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script src="app.js"></script>
 </body>
 </html>

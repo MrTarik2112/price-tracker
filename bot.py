@@ -4,13 +4,16 @@ import re
 from datetime import datetime
 
 URLS = {
-    "acik": "https://www.domirobot.com/anycubic-kobra-3-v2-combo-3d-yazici-pmu7732",
-    "kapali": "https://www.domirobot.com/anycubic-kobra-s1-combo-3d-yazici-pmu7374"
-}
-
-FILES = {
-    "acik": "acik.json",
-    "kapali": "kapali.json"
+    "acik": {
+        "name": "Anycubic Kobra 3 V2 Combo",
+        "url": "https://www.domirobot.com/anycubic-kobra-3-v2-combo-3d-yazici-pmu7732",
+        "file": "acik.json"
+    },
+    "kapali": {
+        "name": "Anycubic Kobra S1 Combo",
+        "url": "https://www.domirobot.com/anycubic-kobra-s1-combo-3d-yazici-pmu7374",
+        "file": "kapali.json"
+    }
 }
 
 HEADERS = {
@@ -35,17 +38,14 @@ def parse_price(html):
     if not html:
         return None
 
-    # JSON-LD
     m = re.search(r'"price"\s*:\s*"([0-9.]+)"', html)
     if m:
         return float(m.group(1))
 
-    # data-price
     m = re.search(r'data-price="([0-9.,]+)"', html)
     if m:
         return float(m.group(1).replace(",", "."))
 
-    # fallback
     m = re.search(r"(\d{4,6})", html)
     if m:
         return float(m.group(1))
@@ -53,26 +53,21 @@ def parse_price(html):
     return None
 
 # =========================
-def is_out_of_stock(html):
+def stock_check(html):
     if not html:
-        return True
+        return "unknown"
 
-    keywords = [
-        "stokta yok",
-        "tükendi",
-        "out of stock",
-        "sold out"
-    ]
+    if "stokta yok" in html.lower() or "tükendi" in html.lower():
+        return "out_of_stock"
 
-    return any(k.lower() in html.lower() for k in keywords)
+    return "in_stock"
 
 # =========================
 def load(file):
     try:
-        data = json.load(open(file))
-        return data if isinstance(data, list) else []
+        return json.load(open(file))
     except:
-        return []
+        return None
 
 # =========================
 def save(file, data):
@@ -80,72 +75,112 @@ def save(file, data):
         json.dump(data, f, indent=2)
 
 # =========================
+def new_db(name, url, price, status):
+    return {
+        "product": {
+            "name": name,
+            "url": url,
+            "last_update": now()
+        },
+        "current": {
+            "price": price,
+            "status": status
+        },
+        "stats": {
+            "min_price": price,
+            "max_price": price,
+            "total_changes": 0,
+            "trend": "stable",
+            "avg_hold_time": "0"
+        },
+        "history": []
+    }
+
+# =========================
 def duration(start, end):
     try:
         t1 = datetime.strptime(start, "%Y-%m-%d -- %H:%M:%S")
         t2 = datetime.strptime(end, "%Y-%m-%d -- %H:%M:%S")
         d = t2 - t1
-
         return f"{d.days}g {d.seconds//3600}s {(d.seconds%3600)//60}dk"
     except:
         return "?"
 
 # =========================
-def process(name, url, file):
-    print(f"\n================ {name.upper()} =================")
+def update_stats(db):
+    prices = [h["price"] for h in db["history"]] + [db["current"]["price"]]
 
-    html = fetch(url)
+    db["stats"]["min_price"] = min(prices)
+    db["stats"]["max_price"] = max(prices)
+    db["stats"]["total_changes"] = len(db["history"])
 
-    if is_out_of_stock(html):
-        print("⚠️ STOKTA YOK")
-        return
+    if len(prices) > 1:
+        if prices[-1] > prices[0]:
+            db["stats"]["trend"] = "up"
+        elif prices[-1] < prices[0]:
+            db["stats"]["trend"] = "down"
+        else:
+            db["stats"]["trend"] = "stable"
 
+# =========================
+def process(key, info):
+    print(f"\n================ {key.upper()} ================")
+
+    html = fetch(info["url"])
     price = parse_price(html)
-    db = load(file)
+    status = stock_check(html)
 
     if not price:
-        print("❌ fiyat okunamadı")
+        print("❌ fiyat alınamadı")
         return
 
-    print("💰 fiyat:", price)
+    db = load(info["file"])
 
+    # first run
     if not db:
-        db.append({
-            "price": price,
-            "start": now(),
-            "end": now()
-        })
-        save(file, db)
-        print("📌 ilk kayıt")
+        db = new_db(info["name"], info["url"], price, status)
+        save(info["file"], db)
+        print("📌 ilk kayıt oluşturuldu")
         return
 
-    last = db[-1]
+    last_price = db["current"]["price"]
 
-    if price == last["price"]:
+    # same price
+    if price == last_price:
         print("⏸ değişim yok")
+        db["product"]["last_update"] = now()
+        db["current"]["status"] = status
+        save(info["file"], db)
         return
 
-    # close old
-    last["end"] = now()
-
+    # PRICE CHANGE
     print("🔥 FİYAT DEĞİŞTİ")
-    print("📦 eski:", last["price"])
-    print("⏳ süre:", duration(last["start"], last["end"]))
+    print(f"📦 eski: {last_price}")
+    print(f"💰 yeni: {price}")
 
-    db.append({
-        "price": price,
-        "start": now(),
-        "end": now()
+    db["history"].append({
+        "price": last_price,
+        "start": db["product"]["last_update"],
+        "end": now(),
+        "duration": duration(db["product"]["last_update"], now())
     })
 
-    save(file, db)
+    db["current"]["price"] = price
+    db["current"]["status"] = status
+    db["product"]["last_update"] = now()
+
+    update_stats(db)
+
+    save(info["file"], db)
+
+    print("📊 stats güncellendi")
 
 # =========================
 def main():
-    print("\n🚀 DUAL PRICE TRACKER STARTED\n")
+    print("\n🚀 ULTRA JSON ENGINE STARTED\n")
 
-    process("ACIK KASA", URLS["acik"], FILES["acik"])
-    process("KAPALI KASA", URLS["kapali"], FILES["kapali"])
+    for k, v in URLS.items():
+        process(k, v)
 
     print("\n✔ DONE")
 

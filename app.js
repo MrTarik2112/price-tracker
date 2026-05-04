@@ -6,11 +6,14 @@ const FILES = {
 const REFRESH_MS = 10000;
 
 // =========================
-// FETCH JSON (CACHE SAFE)
+// SAFE FETCH (GITHUB PAGES FIXED)
 // =========================
 async function getJSON(file) {
   try {
-    const res = await fetch(file + "?v=" + Date.now());
+    // 🔥 FIX: relative root + cache breaker
+    const path = "./" + file + "?v=" + Date.now();
+
+    const res = await fetch(path);
 
     if (!res.ok) {
       console.log("HTTP ERROR:", file, res.status);
@@ -35,43 +38,38 @@ function render(data, elementId) {
   const el = document.getElementById(elementId);
 
   if (!el) {
-    console.error("❌ HTML element yok:", elementId);
+    console.error("❌ DIV YOK:", elementId);
     return;
   }
 
-  if (!data) {
-    el.innerHTML = "❌ Veri yüklenemedi";
-    return;
-  }
-
-  if (!data.current || !data.stats) {
-    console.log("BROKEN JSON:", data);
-    el.innerHTML = "❌ JSON format hatalı";
+  if (!data || !data.current) {
+    el.innerHTML = "❌ veri yok / json hatalı";
     return;
   }
 
   const c = data.current;
-  const s = data.stats;
-  const p = data.product;
+  const s = data.stats || {};
+  const p = data.product || {};
 
   el.innerHTML = `
-    <div class="price">${c.price ?? "-"} TL</div>
+    <div style="font-size:28px;font-weight:bold;color:#00ff9d">
+      ${c.price ?? "-"} TL
+    </div>
 
-    <div class="meta">
-      <div>📦 Ürün: ${p?.name ?? "-"}</div>
-      <div>📊 Durum: ${c.status ?? "-"}</div>
-      <div>📈 Trend: ${s.trend ?? "-"}</div>
+    <div style="margin-top:10px">
+      📦 ${p.name ?? "-"}<br>
+      📊 Durum: ${c.status ?? "-"}<br>
+      📈 Trend: ${s.trend ?? "-"}<br>
+    </div>
 
-      <div style="margin-top:10px">
-        🔻 Min: ${s.min_price ?? "-"} TL<br>
-        🔺 Max: ${s.max_price ?? "-"} TL<br>
-        🔁 Değişim: ${s.total_changes ?? 0}
-      </div>
+    <div style="margin-top:10px">
+      🔻 Min: ${s.min_price ?? "-"}<br>
+      🔺 Max: ${s.max_price ?? "-"}<br>
+      🔁 Değişim: ${s.total_changes ?? 0}
+    </div>
 
-      <div style="margin-top:10px;opacity:0.7">
-        🕒 Son güncelleme:<br>
-        ${p?.last_update ?? "-"}
-      </div>
+    <div style="margin-top:10px;opacity:0.6">
+      🕒 Son: ${p.last_update ?? "-"}
     </div>
   `;
 }
@@ -91,6 +89,8 @@ async function loadAll() {
 // INIT
 // =========================
 function start() {
+  console.log("🚀 DASHBOARD START");
+
   loadAll();
   setInterval(loadAll, REFRESH_MS);
 }

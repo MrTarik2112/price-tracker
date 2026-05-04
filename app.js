@@ -1,67 +1,98 @@
-const CONFIG = {
+const FILES = {
   acik: "acik.json",
-  kapali: "kapali.json",
-  refreshMs: 10000
+  kapali: "kapali.json"
 };
 
+const REFRESH_MS = 10000;
+
 // =========================
-async function fetchJSON(file) {
+// FETCH JSON (CACHE SAFE)
+// =========================
+async function getJSON(file) {
   try {
-    const res = await fetch(file + "?t=" + Date.now()); // cache breaker
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    return await res.json();
+    const res = await fetch(file + "?v=" + Date.now());
+
+    if (!res.ok) {
+      console.log("HTTP ERROR:", file, res.status);
+      return null;
+    }
+
+    const data = await res.json();
+
+    console.log("LOADED:", file, data);
+    return data;
+
   } catch (err) {
-    console.log("Fetch error:", file, err);
+    console.log("FETCH ERROR:", file, err);
     return null;
   }
 }
 
 // =========================
-function formatTime(t) {
-  if (!t) return "-";
-  return t;
-}
-
+// RENDER CARD
 // =========================
-function renderCard(data, el) {
-  if (!data || !data.current) {
-    el.innerHTML = `
-      <div class="error">❌ Veri yok / JSON hatalı</div>
-    `;
+function render(data, elementId) {
+  const el = document.getElementById(elementId);
+
+  if (!el) {
+    console.error("❌ HTML element yok:", elementId);
+    return;
+  }
+
+  if (!data) {
+    el.innerHTML = "❌ Veri yüklenemedi";
+    return;
+  }
+
+  if (!data.current || !data.stats) {
+    console.log("BROKEN JSON:", data);
+    el.innerHTML = "❌ JSON format hatalı";
     return;
   }
 
   const c = data.current;
-  const s = data.stats || {};
-  const p = data.product || {};
+  const s = data.stats;
+  const p = data.product;
 
   el.innerHTML = `
     <div class="price">${c.price ?? "-"} TL</div>
 
-    <div class="info">
-      <div>📦 Durum: ${c.status ?? "-"}</div>
+    <div class="meta">
+      <div>📦 Ürün: ${p?.name ?? "-"}</div>
+      <div>📊 Durum: ${c.status ?? "-"}</div>
       <div>📈 Trend: ${s.trend ?? "-"}</div>
-      <div>🔻 Min: ${s.min_price ?? "-"}</div>
-      <div>🔺 Max: ${s.max_price ?? "-"}</div>
-      <div>🔁 Değişim: ${s.total_changes ?? 0}</div>
-      <div>🕒 Son: ${formatTime(p.last_update)}</div>
+
+      <div style="margin-top:10px">
+        🔻 Min: ${s.min_price ?? "-"} TL<br>
+        🔺 Max: ${s.max_price ?? "-"} TL<br>
+        🔁 Değişim: ${s.total_changes ?? 0}
+      </div>
+
+      <div style="margin-top:10px;opacity:0.7">
+        🕒 Son güncelleme:<br>
+        ${p?.last_update ?? "-"}
+      </div>
     </div>
   `;
 }
 
 // =========================
+// LOAD ALL
+// =========================
 async function loadAll() {
-  const acikData = await fetchJSON(CONFIG.acik);
-  const kapaliData = await fetchJSON(CONFIG.kapali);
+  const acik = await getJSON(FILES.acik);
+  const kapali = await getJSON(FILES.kapali);
 
-  renderCard(acikData, document.getElementById("acik"));
-  renderCard(kapaliData, document.getElementById("kapali"));
+  render(acik, "acik");
+  render(kapali, "kapali");
 }
 
 // =========================
+// INIT
+// =========================
 function start() {
   loadAll();
-  setInterval(loadAll, CONFIG.refreshMs);
+  setInterval(loadAll, REFRESH_MS);
 }
 
 // =========================

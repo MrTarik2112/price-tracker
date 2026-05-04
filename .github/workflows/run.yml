@@ -2,8 +2,11 @@ name: Price Tracker
 
 on:
   schedule:
-    - cron: "*/10 * * * *"   # 10 dakikada bir
+    - cron: "*/10 * * * *"
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   run:
@@ -18,16 +21,16 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install dependencies
+      - name: Install deps
         run: pip install requests
 
       - name: Run bot
         run: python bot.py
 
-      - name: Save price file
+      - name: Commit changes
         run: |
           git config user.name "price-bot"
           git config user.email "bot@github.com"
           git add price.json
-          git commit -m "update price" || echo "no changes"
+          git commit -m "price update" || echo "no changes"
           git push

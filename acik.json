@@ -3,7 +3,7 @@
     "name": "Anycubic Kobra 3 V2 Combo",
     "url": "https://www.domirobot.com/anycubic-kobra-3-v2-combo-3d-yazici-pmu7732",
     "last_update": "2026-05-04 -- 19:13:57",
-    "last_seen": "2026-05-12 -- 06:48:02"
+    "last_seen": "2026-05-12 -- 09:27:03"
   },
   "current": {
     "price": 18950.0,
@@ -654,6 +654,12 @@
     },
     {
       "time": "2026-05-12 -- 06:48:02",
+      "price": 18950.0,
+      "status": "in_stock",
+      "changed": false
+    },
+    {
+      "time": "2026-05-12 -- 09:27:03",
       "price": 18950.0,
       "status": "in_stock",
       "changed": false

@@ -2,12 +2,14 @@ import requests
 import json
 import re
 from datetime import datetime
+from urllib.parse import urlparse
 
 PRODUCTS_FILE = "products.json"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64)",
-    "Accept-Language": "tr-TR,tr;q=0.9"
+    "Accept-Language": "tr-TR,tr;q=0.9",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
 }
 
 # =========================
@@ -23,9 +25,20 @@ def load_products():
         return []
 
 # =========================
+def get_fetch_url(url):
+    try:
+        parsed = urlparse(url)
+        if parsed.hostname and parsed.hostname.endswith("porima3d.com") and parsed.path.startswith("/products/") and not parsed.path.endswith(".json"):
+            return f"{url.rstrip('/')}.json"
+    except:
+        pass
+    return url
+
+# =========================
 def fetch(url):
     try:
-        r = requests.get(url, headers=HEADERS, timeout=12)
+        source_url = get_fetch_url(url)
+        r = requests.get(source_url, headers=HEADERS, timeout=12)
         return r.text if r.status_code == 200 else None
     except:
         return None
@@ -36,17 +49,53 @@ def parse_price(html):
         return None
 
     def normalize(value):
-        value = value.strip().replace(".", "").replace(",", ".")
+        if value is None:
+            return None
+        value = str(value).strip().replace(".", "").replace(",", ".")
         return float(value)
+
+    def extract_json_price(text):
+        try:
+            data = json.loads(text)
+        except:
+            return None
+
+        if isinstance(data, dict):
+            # Shopify-style product JSON payload
+            product = data.get("product") or data
+            if isinstance(product, dict):
+                variants = product.get("variants") or []
+                if variants and isinstance(variants, list):
+                    first = variants[0]
+                    if isinstance(first, dict):
+                        return first.get("price") or first.get("compare_at_price")
+                if "price" in product:
+                    return product.get("price")
+
+            # Generic JSON price key lookup
+            for key in ("price", "amount", "price_amount", "price_value"):
+                if key in data:
+                    return data.get(key)
+
+        return None
+
+    json_price = extract_json_price(html)
+    if json_price is not None:
+        try:
+            return normalize(json_price)
+        except:
+            pass
 
     patterns = [
         r'"price"\s*:\s*"([0-9.,]+)"',
+        r'"price"\s*:\s*([0-9]+(?:\.[0-9]{3})*(?:,[0-9]{2})?)',
         r'data-price=["\']([0-9.,]+)["\']',
+        r'Fiyat\s*[:\-]?\s*([0-9]+(?:\.[0-9]{3})*(?:,[0-9]{2})?)\s*(?:TL|₺)',
         r'([0-9]+(?:\.[0-9]{3})*(?:,[0-9]{2})?)\s*(?:TL|₺)',
     ]
 
     for pattern in patterns:
-        m = re.search(pattern, html)
+        m = re.search(pattern, html, re.I)
         if m:
             try:
                 return normalize(m.group(1))
@@ -60,6 +109,53 @@ def stock_check(html):
     if not html:
         return "unknown"
 
+    def extract_json_stock(text):
+        try:
+            data = json.loads(text)
+        except:
+            return None
+
+        if isinstance(data, dict):
+            if data.get("available") is False:
+                return "out_of_stock"
+            if data.get("available") is True:
+                return "in_stock"
+
+            if "inventory_quantity" in data:
+                qty = data.get("inventory_quantity")
+                if isinstance(qty, int) and qty <= 0:
+                    return "out_of_stock"
+                if isinstance(qty, int) and qty > 0:
+                    return "in_stock"
+
+            product = data.get("product") or data
+            if isinstance(product, dict):
+                variants = product.get("variants") or []
+                if variants and isinstance(variants, list):
+                    first = variants[0]
+                    if isinstance(first, dict):
+                        if first.get("available") is False:
+                            return "out_of_stock"
+                        if first.get("available") is True:
+                            return "in_stock"
+                        qty = first.get("inventory_quantity")
+                        if isinstance(qty, int) and qty <= 0:
+                            return "out_of_stock"
+                        if isinstance(qty, int) and qty > 0:
+                            return "in_stock"
+        return None
+
+    status = extract_json_stock(html)
+    if status:
+        return status
+
+    if re.search(r'"available"\s*:\s*false', html, re.I):
+        return "out_of_stock"
+    if re.search(r'"available"\s*:\s*true', html, re.I):
+        return "in_stock"
+    if re.search(r'"inventory_quantity"\s*:\s*0', html, re.I):
+        return "out_of_stock"
+
     t = html.lower()
     out_phrases = [
         "stokta yok",
@@ -67,13 +163,23 @@ def stock_check(html):
         "tükendi",
         "tukendi",
         "stokta kalmadı",
-        "stokta yok",
         "tükenmiş",
     ]
 
     for phrase in out_phrases:
         if phrase in t:
             return "out_of_stock"
+
+    # Explicit in-stock phrases for Turkish sites
+    in_phrases = [
+        "stoktan teslimat",
+        "stokta",
+        "stok var",
+        "mevcut",
+    ]
+    for phrase in in_phrases:
+        if phrase in t:
+            return "in_stock"
 
     return "in_stock"
 

@@ -1,20 +1,27 @@
 {
   "product": {
-    "name": "Bambu Lab X2D Combo 3D Yazıcı",
+    "name": "Bambu Lab X2D Combo 3D Yaz\u0131c\u0131",
     "url": "https://porima3d.com/products/bambu-lab-x2d-combo-3d-yazici",
     "first_seen": "2026-06-28 -- 00:00:00",
-    "last_seen": "2026-06-28 -- 00:00:00"
+    "last_seen": "2026-06-28 -- 14:08:48"
   },
   "current": {
-    "price": null,
-    "status": "unknown"
+    "price": 57560.81,
+    "status": "in_stock"
   },
   "stats": {
-    "min_price": null,
-    "max_price": null,
-    "total_changes": 0,
+    "min_price": 57560.81,
+    "max_price": 57560.81,
+    "total_changes": 1,
     "trend": "stable",
     "avg_hold_time": "0"
   },
-  "history": []
+  "history": [
+    {
+      "time": "2026-06-28 -- 14:08:48",
+      "price": 57560.81,
+      "status": "in_stock",
+      "changed": true
+    }
+  ]
 }

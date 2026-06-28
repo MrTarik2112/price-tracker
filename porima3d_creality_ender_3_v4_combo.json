@@ -1,20 +1,27 @@
 {
   "product": {
-    "name": "Creality Ender-3 V4 Combo 3D Yazıcı",
+    "name": "Creality Ender-3 V4 Combo 3D Yaz\u0131c\u0131",
     "url": "https://porima3d.com/products/creality-ender-3-v4-combo-3d-yazici",
     "first_seen": "2026-06-28 -- 00:00:00",
-    "last_seen": "2026-06-28 -- 00:00:00"
+    "last_seen": "2026-06-28 -- 14:08:47"
   },
   "current": {
-    "price": null,
-    "status": "unknown"
+    "price": 28305.4,
+    "status": "in_stock"
   },
   "stats": {
-    "min_price": null,
-    "max_price": null,
-    "total_changes": 0,
+    "min_price": 28305.4,
+    "max_price": 28305.4,
+    "total_changes": 1,
     "trend": "stable",
     "avg_hold_time": "0"
   },
-  "history": []
+  "history": [
+    {
+      "time": "2026-06-28 -- 14:08:47",
+      "price": 28305.4,
+      "status": "in_stock",
+      "changed": true
+    }
+  ]
 }

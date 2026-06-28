@@ -1,20 +1,27 @@
 {
   "product": {
-    "name": "Creality Hi Combo 3D Yazıcı",
+    "name": "Creality Hi Combo 3D Yaz\u0131c\u0131",
     "url": "https://porima3d.com/products/creality-hi-combo-3d-yazici",
     "first_seen": "2026-06-28 -- 00:00:00",
-    "last_seen": "2026-06-28 -- 00:00:00"
+    "last_seen": "2026-06-28 -- 14:08:46"
   },
   "current": {
-    "price": null,
-    "status": "unknown"
+    "price": 25109.61,
+    "status": "in_stock"
   },
   "stats": {
-    "min_price": null,
-    "max_price": null,
-    "total_changes": 0,
+    "min_price": 25109.61,
+    "max_price": 25109.61,
+    "total_changes": 1,
     "trend": "stable",
     "avg_hold_time": "0"
   },
-  "history": []
+  "history": [
+    {
+      "time": "2026-06-28 -- 14:08:46",
+      "price": 25109.61,
+      "status": "in_stock",
+      "changed": true
+    }
+  ]
 }

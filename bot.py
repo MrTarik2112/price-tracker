@@ -44,70 +44,230 @@ def fetch(url):
         return None
 
 # =========================
-def parse_price(html):
-    if not html:
+def normalize_price(value):
+    if value is None:
         return None
 
-    def normalize(value):
-        if value is None:
-            return None
-        value = str(value).strip().replace(".", "").replace(",", ".")
+    value = str(value).strip()
+    value = value.replace("\u00A0", "").replace("\u202F", "").replace(" ", "")
+
+    if "." in value and "," in value:
+        # Most likely: 29.990,99 or 1.234.567,89
+        if value.rfind(".") < value.rfind(","):
+            value = value.replace(".", "").replace(",", ".")
+        else:
+            value = value.replace(",", "")
+    elif "," in value:
+        value = value.replace(",", ".")
+
+    try:
         return float(value)
-
-    def extract_json_price(text):
-        try:
-            data = json.loads(text)
-        except:
-            return None
-
-        if isinstance(data, dict):
-            # Shopify-style product JSON payload
-            product = data.get("product") or data
-            if isinstance(product, dict):
-                variants = product.get("variants") or []
-                if variants and isinstance(variants, list):
-                    first = variants[0]
-                    if isinstance(first, dict):
-                        return first.get("price") or first.get("compare_at_price")
-                if "price" in product:
-                    return product.get("price")
-
-            # Generic JSON price key lookup
-            for key in ("price", "amount", "price_amount", "price_value"):
-                if key in data:
-                    return data.get(key)
-
+    except:
         return None
 
-    json_price = extract_json_price(html)
-    if json_price is not None:
-        try:
-            return normalize(json_price)
-        except:
-            pass
 
-    patterns = [
-        r'"price"\s*:\s*"([0-9.,]+)"',
-        r'"price"\s*:\s*([0-9]+(?:\.[0-9]{3})*(?:,[0-9]{2})?)',
-        r'data-price=["\']([0-9.,]+)["\']',
-        r'Fiyat\s*[:\-]?\s*([0-9]+(?:\.[0-9]{3})*(?:,[0-9]{2})?)\s*(?:TL|₺)',
-        r'([0-9]+(?:\.[0-9]{3})*(?:,[0-9]{2})?)\s*(?:TL|₺)',
-    ]
+def best_price(candidates):
+    candidates = [p for p in candidates if isinstance(p, (int, float)) and p > 0]
+    if not candidates:
+        return None
+    return min(candidates)
 
-    for pattern in patterns:
-        m = re.search(pattern, html, re.I)
-        if m:
-            try:
-                return normalize(m.group(1))
-            except:
-                continue
+
+def extract_json_price(text):
+    try:
+        data = json.loads(text)
+    except:
+        return None
+
+    if isinstance(data, dict):
+        # Shopify-style product JSON payload
+        product = data.get("product") or data
+        if isinstance(product, dict):
+            variants = product.get("variants") or []
+            if variants and isinstance(variants, list):
+                first = variants[0]
+                if isinstance(first, dict):
+                    return first.get("price") or first.get("compare_at_price")
+            if "price" in product:
+                return product.get("price")
+
+        # Generic JSON price key lookup
+        for key in ("price", "amount", "price_amount", "price_value"):
+            if key in data:
+                return data.get(key)
 
     return None
 
+
+def parse_price_robotistan(html):
+    patterns = [
+        r'KDV Dahil Fiyat.*?<span[^>]*class=["\']product-price["\'][^>]*>([0-9.,]+)</span>',
+        r'İndirimli Fiyat.*?<span[^>]*class=["\']product-price["\'][^>]*>([0-9.,]+)</span>',
+        r'KDV Dahil Fiyat.*?<span[^>]*class=["\']product-price-not-discounted["\'][^>]*>([0-9.,]+)</span>',
+        r'Fiyat.*?<span[^>]*class=["\']product-price-not-vat["\'][^>]*>([0-9.,]+)</span>',
+    ]
+    candidates = []
+    for pattern in patterns:
+        for m in re.finditer(pattern, html, re.I | re.S):
+            price = normalize_price(m.group(1))
+            if price is not None:
+                candidates.append(price)
+
+    if candidates:
+        return best_price(candidates)
+
+    for m in re.finditer(r'<span[^>]*class=["\']product-price[^"\']*["\']?[^>]*>([0-9.,]+)</span>', html, re.I | re.S):
+        price = normalize_price(m.group(1))
+        if price is not None:
+            candidates.append(price)
+
+    return best_price(candidates) or parse_price_generic(html)
+
+
+def parse_price_3dcim(html):
+    keys = [
+        "indirimliFiyatiStr",
+        "satisFiyatiStr",
+        "urunSepetFiyatiStr",
+        "urunFiyatiOrjinalStr",
+        "urunFiyatiOrjinalKurHaricStr",
+    ]
+    candidates = []
+    for key in keys:
+        pattern = rf'{key}"\s*:\s*"([0-9.,]+)\s*₺"'
+        for m in re.finditer(pattern, html, re.I):
+            price = normalize_price(m.group(1))
+            if price is not None:
+                candidates.append(price)
+
+    if candidates:
+        return best_price(candidates)
+
+    for m in re.finditer(r'<span[^>]*class=["\']?money["\']?[^>]*>([0-9.,]+)\s*₺</span>', html, re.I | re.S):
+        price = normalize_price(m.group(1))
+        if price is not None:
+            candidates.append(price)
+
+    return best_price(candidates) or parse_price_generic(html)
+
+
+def parse_price_porima3d(html):
+    json_price = extract_json_price(html)
+    if json_price is not None:
+        price = normalize_price(json_price)
+        if price is not None:
+            return price
+
+    candidates = []
+    for m in re.finditer(r'<span[^>]*class=["\']?money["\']?[^>]*>([0-9.,]+)\s*TL</span>', html, re.I | re.S):
+        price = normalize_price(m.group(1))
+        if price is not None:
+            candidates.append(price)
+
+    if candidates:
+        return best_price(candidates)
+
+    return parse_price_generic(html)
+
+
+def parse_price_generic(html):
+    json_price = extract_json_price(html)
+    if json_price is not None:
+        price = normalize_price(json_price)
+        if price is not None:
+            return price
+
+    patterns = [
+        r'"price"\s*:\s*"([0-9.,]+)"',
+        r'"price"\s*:\s*([0-9]+(?:[.,][0-9]{2})?)',
+        r'data-price=["\']([0-9.,]+)["\']',
+        r'Fiyat[\s\u00A0\u202F]*[:\-]?[\s\u00A0\u202F]*([0-9]+(?:[.,][0-9]{2})?)\s*(?:TL|₺)',
+        r'([0-9]+(?:[.,][0-9]{2})?)\s*(?:TL|₺)',
+    ]
+    candidates = []
+    for pattern in patterns:
+        for m in re.finditer(pattern, html, re.I):
+            price = normalize_price(m.group(1))
+            if price is not None:
+                candidates.append(price)
+
+    return best_price(candidates)
+
+
+def parse_price(html, url=None):
+    if not html:
+        return None
+
+    hostname = ""
+    if url:
+        try:
+            hostname = urlparse(url).hostname or ""
+        except:
+            hostname = ""
+
+    if hostname.endswith("robotistan.com"):
+        return parse_price_robotistan(html)
+    if hostname.endswith("3dcim.com"):
+        return parse_price_3dcim(html)
+    if hostname.endswith("porima3d.com"):
+        return parse_price_porima3d(html)
+
+    return parse_price_generic(html)
+
 # =========================
-def stock_check(html):
+
+def stock_check_meta(html):
+    m = re.search(r'property=["\']product:availability["\'][^>]*content=["\']([^"\']+)["\']', html, re.I)
+    if m:
+        value = m.group(1).strip().lower()
+        if "in stock" in value:
+            return "in_stock"
+        if "out of stock" in value:
+            return "out_of_stock"
+    return None
+
+
+def stock_check_robotistan(html):
+    status = stock_check_meta(html)
+    if status:
+        return status
+
+    if re.search(r'"available"\s*:\s*false', html, re.I):
+        return "out_of_stock"
+    if re.search(r'"available"\s*:\s*true', html, re.I):
+        return "in_stock"
+
+    text = html.lower()
+    for phrase in ["stokta yok", "stok yok", "tükendi", "tukendi", "stokta kalmadı", "tükenmiş"]:
+        if phrase in text:
+            return "out_of_stock"
+    for phrase in ["stoktan teslimat", "stokta", "stok var", "mevcut", "sepete ekle"]:
+        if phrase in text:
+            return "in_stock"
+
+    return None
+
+
+def stock_check_3dcim(html):
+    status = stock_check_meta(html)
+    if status:
+        return status
+
+    text = html.lower()
+    if "stoktan teslimat" in text or "yarın kargoda" in text or "stoktan" in text:
+        return "in_stock"
+    if "stokta yok" in text or "stok yok" in text or "tükendi" in text:
+        return "out_of_stock"
+    return None
+
+
+def stock_check_generic(html):
     if not html:
         return "unknown"
+
+    status = stock_check_meta(html)
+    if status:
+        return status
 
     def extract_json_stock(text):
         try:
@@ -157,31 +317,37 @@ def stock_check(html):
         return "out_of_stock"
 
     t = html.lower()
-    out_phrases = [
-        "stokta yok",
-        "stok yok",
-        "tükendi",
-        "tukendi",
-        "stokta kalmadı",
-        "tükenmiş",
-    ]
-
-    for phrase in out_phrases:
+    for phrase in ["stokta yok", "stok yok", "tükendi", "tukendi", "stokta kalmadı", "tükenmiş"]:
         if phrase in t:
             return "out_of_stock"
-
-    # Explicit in-stock phrases for Turkish sites
-    in_phrases = [
-        "stoktan teslimat",
-        "stokta",
-        "stok var",
-        "mevcut",
-    ]
-    for phrase in in_phrases:
+    for phrase in ["stoktan teslimat", "stokta", "stok var", "mevcut", "sepete ekle"]:
         if phrase in t:
             return "in_stock"
 
     return "in_stock"
+
+
+def stock_check(html, url=None):
+    if not html:
+        return "unknown"
+
+    hostname = ""
+    if url:
+        try:
+            hostname = urlparse(url).hostname or ""
+        except:
+            hostname = ""
+
+    if hostname.endswith("robotistan.com"):
+        status = stock_check_robotistan(html)
+        if status:
+            return status
+    if hostname.endswith("3dcim.com"):
+        status = stock_check_3dcim(html)
+        if status:
+            return status
+
+    return stock_check_generic(html)
 
 # =========================
 def load(file):
@@ -310,8 +476,8 @@ def process(key, info):
     print(f"\n================ {key.upper()} ================")
 
     html = fetch(info["url"])
-    price = parse_price(html)
-    status = stock_check(html)
+    price = parse_price(html, info["url"])
+    status = stock_check(html, info["url"])
 
     if price is None:
         print("❌ fiyat alınamadı")

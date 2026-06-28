@@ -1,0 +1,64 @@
+{
+  "products": [
+    {
+      "id": "acik",
+      "name": "Anycubic Kobra 3 V2 Combo",
+      "url": "https://www.domirobot.com/anycubic-kobra-3-v2-combo-3d-yazici-pmu7732",
+      "file": "acik.json"
+    },
+    {
+      "id": "kapali",
+      "name": "Anycubic Kobra S1 Combo",
+      "url": "https://www.domirobot.com/anycubic-kobra-s1-combo-3d-yazici-pmu7374",
+      "file": "kapali.json"
+    },
+    {
+      "id": "robotistan-creality-k2-combo",
+      "name": "Creality K2 Combo 3D Yazıcı",
+      "url": "https://www.robotistan.com/creality-k2-combo-3d-yazici",
+      "file": "robotistan_creality_k2_combo.json"
+    },
+    {
+      "id": "robotistan-creality-k1-max",
+      "name": "Creality K1 Max 3D Yazıcı",
+      "url": "https://www.robotistan.com/creality-k1-max-3d-yazici",
+      "file": "robotistan_creality_k1_max.json"
+    },
+    {
+      "id": "3dcim-flashforge-adventurer-5x",
+      "name": "Flashforge Adventurer 5X 3D Yazıcı",
+      "url": "https://3dcim.com/flashforge-adventurer-5x-3d-yazici",
+      "file": "3dcim_flashforge_adventurer_5x.json"
+    },
+    {
+      "id": "3dcim-bambu-lab-p2s",
+      "name": "Bambu Lab P2S 3D Yazıcı",
+      "url": "https://3dcim.com/bambu-lab-p2s-3d-yazici",
+      "file": "3dcim_bambu_lab_p2s.json"
+    },
+    {
+      "id": "porima3d-creality-hi-combo",
+      "name": "Creality Hi Combo 3D Yazıcı",
+      "url": "https://porima3d.com/products/creality-hi-combo-3d-yazici",
+      "file": "porima3d_creality_hi_combo.json"
+    },
+    {
+      "id": "porima3d-creality-ender-3-v4-combo",
+      "name": "Creality Ender-3 V4 Combo 3D Yazıcı",
+      "url": "https://porima3d.com/products/creality-ender-3-v4-combo-3d-yazici",
+      "file": "porima3d_creality_ender_3_v4_combo.json"
+    },
+    {
+      "id": "porima3d-bambu-lab-p2s-combo",
+      "name": "Bambu Lab P2S Combo 3D Yazıcı",
+      "url": "https://porima3d.com/products/bambu-lab-p2s-combo-3d-yazici",
+      "file": "porima3d_bambu_lab_p2s_combo.json"
+    },
+    {
+      "id": "porima3d-bambu-lab-x2d-combo",
+      "name": "Bambu Lab X2D Combo 3D Yazıcı",
+      "url": "https://porima3d.com/products/bambu-lab-x2d-combo-3d-yazici",
+      "file": "porima3d_bambu_lab_x2d_combo.json"
+    }
+  ]
+}

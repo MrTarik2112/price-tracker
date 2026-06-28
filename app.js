@@ -1,8 +1,3 @@
-const FILES = {
-  acik: "acik",
-  kapali: "kapali"
-};
-
 const REFRESH_MS = 10000;
 
 // =========================
@@ -10,7 +5,9 @@ const REFRESH_MS = 10000;
 // =========================
 async function getJSON(file) {
   try {
-    const path = `./${file}.json?v=${Date.now()}`;
+    const path = file.endsWith(".json")
+      ? `./${file}?v=${Date.now()}`
+      : `./${file}.json?v=${Date.now()}`;
 
     const res = await fetch(path);
 
@@ -27,63 +24,52 @@ async function getJSON(file) {
   }
 }
 
+function formatValue(value) {
+  return value === undefined || value === null ? "-" : value;
+}
+
 // =========================
 // RENDER CARD (WITH LINK)
 // =========================
-function render(data, elementId) {
-  const el = document.getElementById(elementId);
-
-  if (!el) {
-    console.error("❌ DIV YOK:", elementId);
-    return;
-  }
-
+function renderCard(product, data) {
   if (!data || !data.current) {
-    el.innerHTML = "❌ veri yok / json hatalı";
-    return;
+    return `
+      <h2>📦 ${product.name}</h2>
+      <div>❌ veri yok / json hatalı</div>
+      <div style="margin-top:12px">
+        <a href="${product.url}" target="_blank" class="button">🔗 Ürüne Git</a>
+      </div>
+    `;
   }
 
   const c = data.current;
   const s = data.stats || {};
   const p = data.product || {};
 
-  el.innerHTML = `
+  return `
+    <h2>📦 ${formatValue(p.name ?? product.name)}</h2>
+
     <div style="font-size:30px;font-weight:700;color:#00ff9d">
-      ${c.price ?? "-"} TL
+      ${formatValue(c.price)} TL
     </div>
 
     <div style="margin-top:8px">
-      📦 ${p.name ?? "-"}<br>
-      📊 Durum: ${c.status ?? "-"}<br>
-      📈 Trend: ${s.trend ?? "-"}
+      📊 Durum: ${formatValue(c.status)}<br>
+      📈 Trend: ${formatValue(s.trend)}
     </div>
 
     <div style="margin-top:10px">
-      🔻 Min: ${s.min_price ?? "-"} TL<br>
-      🔺 Max: ${s.max_price ?? "-"} TL<br>
-      🔁 Değişim: ${s.total_changes ?? 0}
+      🔻 Min: ${formatValue(s.min_price)} TL<br>
+      🔺 Max: ${formatValue(s.max_price)} TL<br>
+      🔁 Değişim: ${formatValue(s.total_changes)}
     </div>
 
     <div style="margin-top:12px">
-      <a href="${p.url ?? "#"}" target="_blank"
-         style="
-           display:inline-block;
-           padding:10px 14px;
-           background:#00ff9d;
-           color:#000;
-           text-decoration:none;
-           border-radius:10px;
-           font-weight:700;
-           transition:0.2s;
-         "
-         onmouseover="this.style.transform='scale(1.05)'"
-         onmouseout="this.style.transform='scale(1)'">
-        🔗 Ürüne Git
-      </a>
+      <a href="${formatValue(p.url ?? product.url)}" target="_blank" class="button">🔗 Ürüne Git</a>
     </div>
 
     <div style="margin-top:10px;opacity:0.6">
-      🕒 Son: ${p.last_update ?? "-"}
+      🕒 Son: ${formatValue(p.last_seen ?? p.last_update)}
     </div>
   `;
 }
@@ -92,11 +78,31 @@ function render(data, elementId) {
 // LOAD ALL DATA
 // =========================
 async function loadAll() {
-  const acik = await getJSON(FILES.acik);
-  const kapali = await getJSON(FILES.kapali);
+  const productsResponse = await getJSON("products");
+  const products = productsResponse?.products || [];
+  const grid = document.getElementById("products-grid");
 
-  render(acik, "acik");
-  render(kapali, "kapali");
+  if (!grid) {
+    console.error("❌ DIV YOK: products-grid");
+    return;
+  }
+
+  if (!products.length) {
+    grid.innerHTML = "<div class='empty'>❌ products.json yüklenemedi</div>";
+    return;
+  }
+
+  grid.innerHTML = "";
+
+  for (const product of products) {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.innerHTML = `<h2>📦 ${product.name}</h2><div class="loading">Yükleniyor...</div>`;
+    grid.appendChild(card);
+
+    const data = await getJSON(product.file);
+    card.innerHTML = renderCard(product, data);
+  }
 }
 
 // =========================

@@ -1,0 +1,20 @@
+{
+  "product": {
+    "name": "Creality K1 Max 3D Yazıcı",
+    "url": "https://www.robotistan.com/creality-k1-max-3d-yazici",
+    "first_seen": "2026-06-28 -- 00:00:00",
+    "last_seen": "2026-06-28 -- 00:00:00"
+  },
+  "current": {
+    "price": null,
+    "status": "unknown"
+  },
+  "stats": {
+    "min_price": null,
+    "max_price": null,
+    "total_changes": 0,
+    "trend": "stable",
+    "avg_hold_time": "0"
+  },
+  "history": []
+}

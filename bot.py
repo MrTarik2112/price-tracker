@@ -3,18 +3,7 @@ import json
 import re
 from datetime import datetime
 
-URLS = {
-    "acik": {
-        "name": "Anycubic Kobra 3 V2 Combo",
-        "url": "https://www.domirobot.com/anycubic-kobra-3-v2-combo-3d-yazici-pmu7732",
-        "file": "acik.json"
-    },
-    "kapali": {
-        "name": "Anycubic Kobra S1 Combo",
-        "url": "https://www.domirobot.com/anycubic-kobra-s1-combo-3d-yazici-pmu7374",
-        "file": "kapali.json"
-    }
-}
+PRODUCTS_FILE = "products.json"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64)",
@@ -24,6 +13,14 @@ HEADERS = {
 # =========================
 def now():
     return datetime.now().strftime("%Y-%m-%d -- %H:%M:%S")
+
+# =========================
+def load_products():
+    try:
+        data = json.load(open(PRODUCTS_FILE, encoding="utf-8"))
+        return data.get("products", [])
+    except:
+        return []
 
 # =========================
 def fetch(url):
@@ -38,13 +35,23 @@ def parse_price(html):
     if not html:
         return None
 
-    m = re.search(r'"price"\s*:\s*"([0-9.]+)"', html)
-    if m:
-        return float(m.group(1))
+    def normalize(value):
+        value = value.strip().replace(".", "").replace(",", ".")
+        return float(value)
 
-    m = re.search(r'data-price="([0-9.,]+)"', html)
-    if m:
-        return float(m.group(1).replace(",", "."))
+    patterns = [
+        r'"price"\s*:\s*"([0-9.,]+)"',
+        r'data-price=["\']([0-9.,]+)["\']',
+        r'([0-9]+(?:\.[0-9]{3})*(?:,[0-9]{2})?)\s*(?:TL|₺)',
+    ]
+
+    for pattern in patterns:
+        m = re.search(pattern, html)
+        if m:
+            try:
+                return normalize(m.group(1))
+            except:
+                continue
 
     return None
 
@@ -54,8 +61,19 @@ def stock_check(html):
         return "unknown"
 
     t = html.lower()
-    if "stokta yok" in t or "tükendi" in t:
-        return "out_of_stock"
+    out_phrases = [
+        "stokta yok",
+        "stok yok",
+        "tükendi",
+        "tukendi",
+        "stokta kalmadı",
+        "stokta yok",
+        "tükenmiş",
+    ]
+
+    for phrase in out_phrases:
+        if phrase in t:
+            return "out_of_stock"
 
     return "in_stock"
 
@@ -102,12 +120,55 @@ def new_db(name, url, price, status):
             "price": price,
             "status": status
         },
+        "stats": {
+            "min_price": price,
+            "max_price": price,
+            "total_changes": 0,
+            "trend": "stable",
+            "avg_hold_time": "0"
+        },
         "history": []
     }
 
 # =========================
+def compute_stats(db):
+    history = db.get("history", [])
+    prices = [entry.get("price") for entry in history if isinstance(entry.get("price"), (int, float))]
+
+    if not prices:
+        current_price = db.get("current", {}).get("price")
+        return {
+            "min_price": current_price,
+            "max_price": current_price,
+            "total_changes": 0,
+            "trend": "stable",
+            "avg_hold_time": "0"
+        }
+
+    min_price = min(prices)
+    max_price = max(prices)
+    total_changes = sum(1 for entry in history if entry.get("changed"))
+
+    trend_value = "stable"
+    if len(prices) >= 2:
+        first = prices[0]
+        last = prices[-1]
+        if last > first:
+            trend_value = "up"
+        elif last < first:
+            trend_value = "down"
+
+    return {
+        "min_price": min_price,
+        "max_price": max_price,
+        "total_changes": total_changes,
+        "trend": trend_value,
+        "avg_hold_time": "0"
+    }
+
+# =========================
 def add_snapshot(db, price, status):
-    last_price = db["current"]["price"]
+    last_price = db["current"].get("price")
 
     snapshot = {
         "time": now(),
@@ -146,7 +207,7 @@ def process(key, info):
     price = parse_price(html)
     status = stock_check(html)
 
-    if not price:
+    if price is None:
         print("❌ fiyat alınamadı")
         return
 
@@ -161,6 +222,7 @@ def process(key, info):
     db["current"]["price"] = price
     db["current"]["status"] = status
     db["product"]["last_seen"] = now()
+    db["stats"] = compute_stats(db)
 
     print("💰 fiyat:", price)
     print("📦 status:", status)
@@ -170,7 +232,7 @@ def process(key, info):
     else:
         print("⏸ no change")
 
-    print("📊 trend:", trend(db))
+    print("📊 trend:", db["stats"]["trend"])
 
     save(info["file"], db)
 
@@ -178,8 +240,14 @@ def process(key, info):
 def main():
     print("\n🚀 PRO PRICE TRACKER STARTED\n")
 
-    for k, v in URLS.items():
-        process(k, v)
+    products = load_products()
+
+    if not products:
+        print("❌ products.json bulunamadı veya ürün listesi boş")
+        return
+
+    for product in products:
+        process(product.get("id", "unknown"), product)
 
     print("\n✔ DONE")
 

@@ -1,0 +1,20 @@
+{
+  "product": {
+    "name": "Bambu Lab P2S Combo 3D Yazıcı",
+    "url": "https://porima3d.com/products/bambu-lab-p2s-combo-3d-yazici",
+    "first_seen": "2026-06-28 -- 00:00:00",
+    "last_seen": "2026-06-28 -- 00:00:00"
+  },
+  "current": {
+    "price": null,
+    "status": "unknown"
+  },
+  "stats": {
+    "min_price": null,
+    "max_price": null,
+    "total_changes": 0,
+    "trend": "stable",
+    "avg_hold_time": "0"
+  },
+  "history": []
+}

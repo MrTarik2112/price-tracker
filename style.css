@@ -18,9 +18,8 @@ h1 {
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: 1fr 1fr;
   gap: 20px;
-  align-items: stretch;
 }
 
 .card {
@@ -33,27 +32,6 @@ h1 {
 
 .card:hover {
   transform: translateY(-5px);
-}
-
-.button {
-  display: inline-block;
-  padding: 10px 14px;
-  background: #00ff9d;
-  color: #000;
-  text-decoration: none;
-  border-radius: 10px;
-  font-weight: 700;
-  transition: transform 0.2s ease;
-}
-
-.button:hover {
-  transform: scale(1.05);
-}
-
-.loading,
-.empty {
-  color: #ccc;
-  padding: 10px 0;
 }
 
 .price {

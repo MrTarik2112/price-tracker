@@ -1,6 +1,7 @@
 import requests
 import json
 import re
+import sys
 from datetime import datetime
 from urllib.parse import urlparse
 
@@ -124,33 +125,6 @@ def parse_price_robotistan(html):
     return best_price(candidates) or parse_price_generic(html)
 
 
-def parse_price_3dcim(html):
-    keys = [
-        "indirimliFiyatiStr",
-        "satisFiyatiStr",
-        "urunSepetFiyatiStr",
-        "urunFiyatiOrjinalStr",
-        "urunFiyatiOrjinalKurHaricStr",
-    ]
-    candidates = []
-    for key in keys:
-        pattern = rf'{key}"\s*:\s*"([0-9.,]+)\s*₺"'
-        for m in re.finditer(pattern, html, re.I):
-            price = normalize_price(m.group(1))
-            if price is not None:
-                candidates.append(price)
-
-    if candidates:
-        return best_price(candidates)
-
-    for m in re.finditer(r'<span[^>]*class=["\']?money["\']?[^>]*>([0-9.,]+)\s*₺</span>', html, re.I | re.S):
-        price = normalize_price(m.group(1))
-        if price is not None:
-            candidates.append(price)
-
-    return best_price(candidates) or parse_price_generic(html)
-
-
 def parse_price_porima3d(html):
     json_price = extract_json_price(html)
     if json_price is not None:
@@ -207,8 +181,6 @@ def parse_price(html, url=None):
 
     if hostname.endswith("robotistan.com"):
         return parse_price_robotistan(html)
-    if hostname.endswith("3dcim.com"):
-        return parse_price_3dcim(html)
     if hostname.endswith("porima3d.com"):
         return parse_price_porima3d(html)
 
@@ -248,17 +220,6 @@ def stock_check_robotistan(html):
     return None
 
 
-def stock_check_3dcim(html):
-    status = stock_check_meta(html)
-    if status:
-        return status
-
-    text = html.lower()
-    if "stoktan teslimat" in text or "yarın kargoda" in text or "stoktan" in text:
-        return "in_stock"
-    if "stokta yok" in text or "stok yok" in text or "tükendi" in text:
-        return "out_of_stock"
-    return None
 
 
 def stock_check_generic(html):
@@ -340,10 +301,6 @@ def stock_check(html, url=None):
 
     if hostname.endswith("robotistan.com"):
         status = stock_check_robotistan(html)
-        if status:
-            return status
-    if hostname.endswith("3dcim.com"):
-        status = stock_check_3dcim(html)
         if status:
             return status
 
@@ -482,32 +439,6 @@ def process(key, info):
     if price is None:
         print("❌ fiyat alınamadı")
         return
-
-    db = load(info["file"])
-
-    if not db:
-        db = new_db(info["name"], info["url"], price, status)
-
-    last_price = add_snapshot(db, price, status)
-
-    # update current always
-    db["current"]["price"] = price
-    db["current"]["status"] = status
-    db["product"]["last_seen"] = now()
-    db["stats"] = compute_stats(db)
-
-    print("💰 fiyat:", price)
-    print("📦 status:", status)
-
-    if price != last_price:
-        print("🔥 CHANGE DETECTED")
-    else:
-        print("⏸ no change")
-
-    print("📊 trend:", db["stats"]["trend"])
-
-    save(info["file"], db)
-
 # =========================
 def main():
     print("\n🚀 PRO PRICE TRACKER STARTED\n")

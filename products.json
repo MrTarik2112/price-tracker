@@ -25,18 +25,6 @@
       "file": "robotistan_creality_k1_max.json"
     },
     {
-      "id": "3dcim-flashforge-adventurer-5x",
-      "name": "Flashforge Adventurer 5X 3D Yazıcı",
-      "url": "https://3dcim.com/flashforge-adventurer-5x-3d-yazici",
-      "file": "3dcim_flashforge_adventurer_5x.json"
-    },
-    {
-      "id": "3dcim-bambu-lab-p2s",
-      "name": "Bambu Lab P2S 3D Yazıcı",
-      "url": "https://3dcim.com/bambu-lab-p2s-3d-yazici",
-      "file": "3dcim_bambu_lab_p2s.json"
-    },
-    {
       "id": "porima3d-creality-hi-combo",
       "name": "Creality Hi Combo 3D Yazıcı",
       "url": "https://porima3d.com/products/creality-hi-combo-3d-yazici",

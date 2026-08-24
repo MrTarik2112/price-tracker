@@ -3,7 +3,7 @@
     "name": "Anycubic Kobra S1 Combo",
     "url": "https://www.domirobot.com/anycubic-kobra-s1-combo-3d-yazici-pmu7374",
     "last_update": "2026-05-04 -- 19:14:00",
-    "last_seen": "2026-08-24 -- 23:31:27"
+    "last_seen": "2026-08-24 -- 23:54:08"
   },
   "current": {
     "price": 28600.0,
@@ -17,12 +17,6 @@
     "avg_hold_time": "0"
   },
   "history": [
-    {
-      "time": "2026-08-11 -- 10:33:17",
-      "price": 27050.0,
-      "status": "in_stock",
-      "changed": false
-    },
     {
       "time": "2026-08-11 -- 11:25:55",
       "price": 27050.0,
@@ -3013,6 +3007,12 @@
     },
     {
       "time": "2026-08-24 -- 23:31:27",
+      "price": 28600.0,
+      "status": "in_stock",
+      "changed": false
+    },
+    {
+      "time": "2026-08-24 -- 23:54:08",
       "price": 28600.0,
       "status": "in_stock",
       "changed": false
